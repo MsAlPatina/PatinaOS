@@ -1,5 +1,7 @@
 ;.\a18.exe SerialReceiveThruEF1Pin.asm -b SerialReceiveThruEF1Pin.bin -l SerialReceiveThruEF1Pin.lst
 ;ONLY FOR CDP1806
+;Clock must be 4Mhz
+;bound rate of 19200 and 8 data bits, 1 start bit and 1 stop bit, no parity bit
 ;HRJ A18 wants register names defined...
 
 
