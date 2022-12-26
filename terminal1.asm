@@ -29,12 +29,33 @@ START
     ldi HIGH(33023)
     phi R14
     
-    ldi FCALL.1
-    phi R15
+    ldi FCALL.1 ;Setting the HIGH part of R15. This will never change again.
+    phi R15 ;read more about it in the "FUNCTION CALL HELPER" section.
     
     lbr MAIN_PROGRAM
-    
+
 ;-FUNCTION CALL HELPER-------------------------
+;This subroutine helps to call "infinite" amount of functions,
+;and let us use the R0 register as a permanent program counter.
+;The only case when the program counter is need to be changed is
+;when this subroutine is called.
+;This subroutine uses the R15 register as a program counter.
+;It saves the R0 register's value into the STACK
+;Then copies the value of the R13 register to the R0 register.
+;The STACK address is stored in R14, and it should not be changed,
+;only then if you really know what are you doing.
+;To call a function first set the R13 to the target function's address
+;Then use the following lines to initiate the call:
+;ldi FCALL.0
+;plo R15
+;sep R15
+;
+;Since this subroutine is stored in the first 256 bytes of the ROM,
+;only the LOW part of the R15 needs to be set before using it as
+;program counter.
+;
+;To return from a function, use simply the "sep R15" instruction.
+
 FCALL
     sex R14
     glo R0
@@ -202,49 +223,47 @@ STORE_CHAR
 ;----------------------------------------------
 
 ;-MAIN-----------------------------------------
+;The program starts with the printing of the boot message.
 MAIN_PROGRAM
-    ldi BOOT_MSG.0
-    plo R6
+    ldi BOOT_MSG.0 ;The PRINT function uses the R6 register for the address of the string.
+    plo R6 ;so we load the BOOT_MSG address in to the R6 register first.
     ldi BOOT_MSG.1
     phi R6
-MAIN_PROGRAM2
-	
-	
-	
-    ldi PRINT.0 ;we use R6 to point what we want to print
-    plo R13
+
+    ldi PRINT.0 ;Setting R13 to the address of PRINT.
+    plo R13 ;to call the PRINT function.
     ldi PRINT.1
     phi R13
     
     ldi FCALL.0
     plo R15
-    sep R15
-	
-	;stuff goes here
+    sep R15 ;Calling the function right here.
 
 	lbr ASK_INPUT
 	
-test
-	
+TEST
 	ldi LOW(32768)
-	PLO R8 
-	LDI HIGH(32768)
+	plo R8 
+	ldi HIGH(32768)
 	phi R8
 	
 	ldi RUN.0
-	PLO R9 
-	LDI RUN.1
+	plo R9 
+	ldi RUN.1
 	phi R9
 	
 	ldi STRCOMP.0
-	plo R3 ;to call STRCOMP, R3 is also the last free register
+	plo R13 ;to call STRCOMP, R3 is also the last free register
 	ldi STRCOMP.1
-	phi R3
-	sep R3
+	phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
 
 	glo R12
 	
-	LBZ NOTHING
+	lbz NOTHING
 	
 	ldi RUNINFO.0
     plo R6
@@ -260,10 +279,7 @@ test
     plo R15
     sep R15
 	
-	LBR MAIN_PROGRAM2 
-	
-NOTHING 
-
+NOTHING
 	ldi UNKNOWN.0
     plo R6
     ldi UNKNOWN.1
@@ -277,8 +293,6 @@ NOTHING
     ldi FCALL.0
     plo R15
     sep R15
-	
-	LBR MAIN_PROGRAM2
 
 ASK_INPUT ;use SCALL for this 
     ldi LOW(32768)
@@ -295,33 +309,7 @@ ASK_INPUT ;use SCALL for this
     plo R15
     sep R15
     
-    ldi RESULT_OUT.0
-    plo R6
-    ldi RESULT_OUT.1
-    phi R6
-    
-    ldi PRINT.0
-    plo R13
-    ldi PRINT.1
-    phi R13
-    
-    ldi FCALL.0
-    plo R15
-    sep R15
-    
-    ldi LOW(32768)
-    plo R6
-    ldi HIGH(32768)
-    phi R6
-    
-    ldi PRINT.0
-    plo R13
-    ldi PRINT.1
-    phi R13
-    
-    ldi FCALL.0
-    plo R15
-    sep R15
+    ;check command here.
     
     ldi NEW_LINE.0
     plo R6
@@ -404,35 +392,35 @@ MEMDUMP
   ;R8 1 string
   ;R9 2 string
 STRCOMP
-    LDI 0  ;result = 0
-    PLO R12
-    LDI 0
-    PHI R12
+    ldi 0  ;result = 0
+    plo R12
+    ldi 0
+    phi R12
 	
 	;to compare strings duh
 	
 STRCOMPARATOR ;the while loop
     
-    LDN R8 ;load value from memory[a_pointer] to D register
-    SEX R9 ;set X pointer to b_pointer
-    XOR ; memory[X] xor D
+    ldn R8 ;load value from memory[a_pointer] to D register
+    sex R9 ;set X pointer to b_pointer
+    xor ; memory[X] xor D
     
-    BZ NEXT_IF ; you need to think in a way how the code flow, so we will jump when memory[a_pointer] == memory[b_pointer]
+    bz NEXT_IF ; you need to think in a way how the code flow, so we will jump when memory[a_pointer] == memory[b_pointer]
                 ; so when memory[a_pointer] != memory[b_pointer] the code continues
-    SEP R0 ;get back to main code
+    sep R15 ;get back to main code
     
 NEXT_IF
     
-	LDN R8
-	BNZ INCREMENTING
-	LDI $01
-	PLO R12 ;if A = B then R12 = 1 else R12 = 0, R12 is one of the few free registers
-	SEP R0
+	ldn R8
+	bnz INCREMENTING
+	ldi $01
+	plo R12 ;if A = B then R12 = 1 else R12 = 0, R12 is one of the few free registers
+	sep R15
 	
 INCREMENTING
-	INC R8
-	INC R9
-	BR STRCOMPARATOR
+	inc R8
+	inc R9
+	br STRCOMPARATOR
 
 ;-RAM------------------------------------------
 LINE_IN
