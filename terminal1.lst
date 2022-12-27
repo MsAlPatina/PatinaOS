@@ -1,0 +1,531 @@
+                        ;.\a18.exe terminal1.asm -b terminal1.bin -l terminal1.lst
+   0000                 R0 EQU 0
+   0001                 R1 EQU 1
+   0002                 R2 EQU 2
+   0003                 R3 EQU 3
+   0004                 R4 EQU 4
+   0005                 R5 EQU 5
+   0006                 R6 EQU 6
+   0007                 R7 EQU 7
+   0008                 R8 EQU 8
+   0009                 R9 EQU 9
+   000a                 R10 EQU 10
+   000b                 R11 EQU 11
+   000c                 R12 EQU 12
+   000d                 R13 EQU 13
+   000e                 R14 EQU 14
+   000f                 R15 EQU 15
+                        
+   3e80                 STACK EQU 16000 ;The starting address of the STACK.
+   2710                 LINE_IN EQU 10000 ;The starting address of the readed characters.
+                        
+                        
+   0000                     org 00h
+                        
+   0000                 START
+   0000   71                dis
+   0001   00                idl
+                        
+   0002   7b                seq
+                        
+   0003   f8 80             ldi STACK.0 ;R14 STACK pointer
+   0005   ae                plo R14
+   0006   f8 3e             ldi STACK.1
+   0008   be                phi R14
+                        
+   0009   f8 00             ldi FCALL.1 ;Setting the HIGH part of R15. This will never change again.
+   000b   bf                phi R15 ;read more about it in the "FUNCTION CALL HELPER" section.
+                        
+   000c   c0 00 a1          lbr MAIN_PROGRAM
+                        
+                        ;-FUNCTION CALL HELPER-------------------------
+                        ;This subroutine helps to call "infinite" amount of functions,
+                        ;and let us use the R0 register as a permanent program counter.
+                        ;The only case when the program counter is need to be changed is
+                        ;when this subroutine is called.
+                        ;This subroutine uses the R15 register as a program counter.
+                        ;It saves the R0 register's value into the STACK
+                        ;Then copies the value of the R13 register to the R0 register.
+                        ;The STACK address is stored in R14, and it should not be changed,
+                        ;only then if you really know what are you doing.
+                        ;To call a function first set the R13 to the target function's address
+                        ;Then use the following lines to initiate the call:
+                        ;ldi FCALL.0
+                        ;plo R15
+                        ;sep R15
+                        ;
+                        ;Since this subroutine is stored in the first 256 bytes of the ROM,
+                        ;only the LOW part of the R15 needs to be set before using it as
+                        ;program counter.
+                        ;
+                        ;To return from a function, use simply the "sep R15" instruction.
+                        
+   000f                 FCALL
+   000f   ee                sex R14
+   0010   80                glo R0
+   0011   73                stxd
+   0012   90                ghi R0
+   0013   73                stxd
+                        
+   0014   8d                glo R13
+   0015   a0                plo R0
+   0016   9d                ghi R13
+   0017   b0                phi R0
+   0018   d0                sep R0
+                        
+   0019                 FRETURN
+   0019   1e                inc R14
+   001a   ee                sex R14
+   001b   72                ldxa
+   001c   b0                phi R0
+   001d   f0                ldx
+   001e   a0                plo R0
+   001f   d0                sep R0
+   0020   30 19             br FRETURN
+                        ;----------------------------------------------
+                        
+                        ;-SERIAL SEND BYTE-----------------------------
+                        ;-DATA-R4.1------------------------------------
+   0022                 SERIAL_SEND_START
+   0022   94                ghi R4
+   0023   fb ff             xri 0FFh
+   0025   b4                phi R4   
+   0026   f8 85             ldi 085h
+   0028   fe                shl
+   0029   a4                plo R4
+                        
+   002a                 SERIAL_SEND_BIT
+   002a   c7                lsnf ;24
+   002b   7a                req  ;16
+   002c   c8                lskp   ;24
+   002d   7b                seq  ;16
+   002e   c4                nop  ;24
+                        
+   002f   24                dec R4  ;16
+   0030   84                glo R4  ;16
+   0031   c6                lsnz    ;24
+   0032   df                sep R15  ;--
+   0033   c4                nop     ;--
+   0034   94                ghi R4  ;16
+   0035   f6                shr     ;16
+   0036   b4                phi R4  ;16
+   0037   c4                nop     ;24
+   0038   30 2a             br SERIAL_SEND_BIT ;16
+                        ;----------------------------------------------
+                        
+                        ;-SERIAL READ BYTE-----------------------------
+                        ;-RETURN R5.1----------------------------------
+   003a                 SERIAL_READ_START
+   003a   f8 00             ldi 00h
+   003c   a5                plo R5
+   003d   b5                phi R5
+                        
+   003e                 SERIAL_WAIT_START
+   003e   3c 3e             bn1 SERIAL_WAIT_START ;16
+   0040   c4                nop ;24
+   0041   c4                nop ;24
+   0042   c4                nop ;24
+   0043   f9 00             ori 00h ;16
+                        
+   0045                 SERIAL_SAMPLE_BIT
+   0045   34 4b             b1 SERIAL_NULL_BIT ;16
+   0047   f9 80             ori 080h ;16
+   0049   30 4f             br SERIAL_SAVE_BIT ;16
+                        
+   004b                 SERIAL_NULL_BIT
+   004b   f9 00             ori 00h ;16
+   004d   f9 00             ori 00h ;16
+                        
+   004f                 SERIAL_SAVE_BIT
+   004f   b5                phi R5 ;16
+   0050   15                inc R5 ;16
+   0051   85                glo R5 ;16
+   0052   fb 09             xri 09h ;16
+   0054   c6                lsnz ;24
+   0055   df                sep R15 ;--
+   0056   c4                nop ;--
+   0057   95                ghi R5 ;16
+   0058   f6                shr ;16
+   0059   c4                nop ;24
+   005a   30 45             br SERIAL_SAMPLE_BIT ;16
+                        ;----------------------------------------------
+                        
+                        ;-PRINT----------------------------------------
+                        ;-FIRST CHAR-R6--------------------------------
+   005c                 PRINT
+   005c   e6                sex R6
+   005d   72                ldxa
+   005e   c6                lsnz
+   005f   df                sep R15
+   0060   c4                nop
+                        
+   0061   b4                phi R4
+                        
+   0062   f8 22             ldi SERIAL_SEND_START.0
+   0064   ad                plo R13
+   0065   f8 00             ldi SERIAL_SEND_START.1
+   0067   bd                phi R13
+                        
+   0068   f8 0f             ldi FCALL.0
+   006a   af                plo R15
+   006b   df                sep R15
+   006c   30 5c             br PRINT
+                        ;----------------------------------------------
+                        
+                        ;-READ LINE------------------------------------
+                        ;-WHERE TO READ-R7-----------------------------
+   006e                 READLINE
+   006e   f8 3a             ldi SERIAL_READ_START.0
+   0070   ad                plo R13
+   0071   f8 00             ldi SERIAL_READ_START.1
+   0073   bd                phi R13
+                        
+   0074   f8 0f             ldi FCALL.0
+   0076   af                plo R15
+   0077   df                sep R15
+                        
+   0078   95                ghi R5
+   0079   fb 0d             xri 13
+   007b   3a 91             bnz STORE_CHAR
+                        
+   007d                 END_LINE
+   007d   f8 00             ldi 00h
+   007f   57                str R7
+                        
+   0080   f8 b1             ldi NEW_LINE.0
+   0082   a6                plo R6
+   0083   f8 01             ldi NEW_LINE.1
+   0085   b6                phi R6
+                        
+   0086   f8 5c             ldi PRINT.0
+   0088   ad                plo R13
+   0089   f8 00             ldi PRINT.1
+   008b   bd                phi R13
+                        
+   008c   f8 0f             ldi FCALL.0
+   008e   af                plo R15
+   008f   df                sep R15
+                        
+   0090   df                sep R15
+                        
+   0091                 STORE_CHAR
+   0091   95                ghi R5
+   0092   57                str R7
+   0093   17                inc R7
+                        
+   0094   b4                phi R4
+                        
+   0095   f8 22             ldi SERIAL_SEND_START.0
+   0097   ad                plo R13
+   0098   f8 00             ldi SERIAL_SEND_START.1
+   009a   bd                phi R13
+                        
+   009b   f8 0f             ldi FCALL.0
+   009d   af                plo R15
+   009e   df                sep R15
+   009f   30 6e             br READLINE
+                        ;----------------------------------------------
+                        
+                        ;-MAIN-----------------------------------------
+                        ;The program starts with the printing of the boot message.
+   00a1                 MAIN_PROGRAM
+   00a1   f8 2d             ldi BOOT_MSG.0 ;The PRINT function uses the R6 register for the address of the string.
+   00a3   a6                plo R6 ;so we load the BOOT_MSG address in to the R6 register first.
+   00a4   f8 01             ldi BOOT_MSG.1
+   00a6   b6                phi R6
+                        
+   00a7   f8 5c             ldi PRINT.0 ;Setting R13 to the address of PRINT.
+   00a9   ad                plo R13 ;to call the PRINT function.
+   00aa   f8 00             ldi PRINT.1
+   00ac   bd                phi R13
+                        
+   00ad   f8 0f             ldi FCALL.0
+   00af   af                plo R15
+   00b0   df                sep R15 ;Calling the function right here.
+                        
+   00b1   c0 00 f0          lbr ASK_INPUT
+                        
+   00b4                 TEST
+   00b4   f8 10             ldi LINE_IN.0
+   00b6   a8                plo R8 
+   00b7   f8 27             ldi LINE_IN.1
+   00b9   b8                phi R8
+                        
+   00ba   f8 f1             ldi RUN.0
+   00bc   a9                plo R9 
+   00bd   f8 01             ldi RUN.1
+   00bf   b9                phi R9
+                        
+   00c0   f8 8e             ldi STRCOMP.0
+   00c2   ad                plo R13 ;to call STRCOMP, R3 is also the last free register
+   00c3   f8 02             ldi STRCOMP.1
+   00c5   bd                phi R13
+                        
+   00c6   f8 0f             ldi FCALL.0
+   00c8   af                plo R15
+   00c9   df                sep R15
+                        
+   00ca   8c                glo R12
+                        
+   00cb   c2 00 df          lbz NOTHING
+                        
+   00ce   f8 f5             ldi RUNINFO.0
+   00d0   a6                plo R6
+   00d1   f8 01             ldi RUNINFO.1
+   00d3   b6                phi R6
+                        
+   00d4   f8 5c             ldi PRINT.0 ;we use R6 to point what we want to print
+   00d6   ad                plo R13
+   00d7   f8 00             ldi PRINT.1
+   00d9   bd                phi R13
+                        
+   00da   f8 0f             ldi FCALL.0
+   00dc   af                plo R15
+   00dd   df                sep R15
+                        
+   00de   df                sep R15
+                        
+   00df                 NOTHING
+   00df   f8 bd             ldi UNKNOWN.0
+   00e1   a6                plo R6
+   00e2   f8 01             ldi UNKNOWN.1
+   00e4   b6                phi R6
+                        
+   00e5   f8 5c             ldi PRINT.0 ;we use R6 to point what we want to print
+   00e7   ad                plo R13
+   00e8   f8 00             ldi PRINT.1
+   00ea   bd                phi R13
+                        
+   00eb   f8 0f             ldi FCALL.0
+   00ed   af                plo R15
+   00ee   df                sep R15
+                        
+   00ef   df                sep R15
+                        
+   00f0                 ASK_INPUT ;use SCALL for this 
+   00f0   f8 10             ldi LINE_IN.0
+   00f2   a7                plo R7
+   00f3   f8 27             ldi LINE_IN.1
+   00f5   b7                phi R7
+                        
+   00f6   f8 6e             ldi READLINE.0
+   00f8   ad                plo R13
+   00f9   f8 00             ldi READLINE.1
+   00fb   bd                phi R13
+                        
+   00fc   f8 0f             ldi FCALL.0
+   00fe   af                plo R15
+   00ff   df                sep R15
+                        
+   0100   f8 b4             ldi TEST.0
+   0102   ad                plo R13
+   0103   f8 00             ldi TEST.1
+   0105   bd                phi R13
+                        
+   0106   f8 0f             ldi FCALL.0
+   0108   af                plo R15
+   0109   df                sep R15
+                        
+   010a   f8 b1             ldi NEW_LINE.0
+   010c   a6                plo R6
+   010d   f8 01             ldi NEW_LINE.1
+   010f   b6                phi R6
+                        
+   0110   f8 5c             ldi PRINT.0
+   0112   ad                plo R13
+   0113   f8 00             ldi PRINT.1
+   0115   bd                phi R13
+                        
+   0116   f8 0f             ldi FCALL.0
+   0118   af                plo R15
+   0119   df                sep R15
+                        
+   011a   f8 9e             ldi ASK_IN.0
+   011c   a6                plo R6
+   011d   f8 01             ldi ASK_IN.1
+   011f   b6                phi R6
+                        
+   0120   f8 5c             ldi PRINT.0
+   0122   ad                plo R13
+   0123   f8 00             ldi PRINT.1
+   0125   bd                phi R13
+                        
+   0126   f8 0f             ldi FCALL.0
+   0128   af                plo R15
+   0129   df                sep R15
+                        
+   012a   c0 00 f0          lbr ASK_INPUT ;replace by SRET
+                        
+                        ;this is looped, we can make this a function tho
+                        ;----------------------------------------------
+                        
+                        ;-CONSTANT DATA--------------------------------
+   012d                 BOOT_MSG
+   012d   43 44 50 31       db "CDP1806 Terminal, please use either BASIC or ASM op codes. \r\n For help use HELP command.\r\n 220 Bytes of RAM free "
+   0131   38 30 36 20   
+   0135   54 65 72 6d   
+   0139   69 6e 61 6c   
+   013d   2c 20 70 6c   
+   0141   65 61 73 65   
+   0145   20 75 73 65   
+   0149   20 65 69 74   
+   014d   68 65 72 20   
+   0151   42 41 53 49   
+   0155   43 20 6f 72   
+   0159   20 41 53 4d   
+   015d   20 6f 70 20   
+   0161   63 6f 64 65   
+   0165   73 2e 20 0d   
+   0169   0a 20 46 6f   
+   016d   72 20 68 65   
+   0171   6c 70 20 75   
+   0175   73 65 20 48   
+   0179   45 4c 50 20   
+   017d   63 6f 6d 6d   
+   0181   61 6e 64 2e   
+   0185   0d 0a 20 32   
+   0189   32 30 20 42   
+   018d   79 74 65 73   
+   0191   20 6f 66 20   
+   0195   52 41 4d 20   
+   0199   66 72 65 65   
+   019d   20            
+   019e                 ASK_IN
+   019e   0d 0a 3e 00       db "\r\n>",0
+   01a2                 RESULT_OUT
+   01a2   59 6f 75 20       db "You typed in: ",0
+   01a6   74 79 70 65   
+   01aa   64 20 69 6e   
+   01ae   3a 20 00      
+   01b1                 NEW_LINE
+   01b1   0d 0a 00          db "\r\n",0
+                        
+   01b4                 READY
+                        
+   01b4   52 45 41 44       db "READY \r\n",0
+   01b8   59 20 0d 0a   
+   01bc   00            
+                        
+   01bd                 UNKNOWN
+                        
+   01bd   43 6f 6d 6d       db "Command doesnt exist. For help use HELP command. \r\n",0
+   01c1   61 6e 64 20   
+   01c5   64 6f 65 73   
+   01c9   6e 74 20 65   
+   01cd   78 69 73 74   
+   01d1   2e 20 46 6f   
+   01d5   72 20 68 65   
+   01d9   6c 70 20 75   
+   01dd   73 65 20 48   
+   01e1   45 4c 50 20   
+   01e5   63 6f 6d 6d   
+   01e9   61 6e 64 2e   
+   01ed   20 0d 0a 00   
+                        
+                        ;commands
+                        
+   01f1                 RUN
+                        
+   01f1   52 55 4e 00       DB "RUN",0
+                        
+   01f5                 RUNINFO
+                        
+   01f5   49 74 73 20       DB "Its Show Time!!",0
+   01f9   53 68 6f 77   
+   01fd   20 54 69 6d   
+   0201   65 21 21 00   
+                        
+   0205                 HELP
+                        
+   0205   48 65 72 65       DB "Heres a list of commands: \r\n RUN, runs code from ram.\r\n MEMDUMP, dumps RAMs content to terminal.\r\n DELETE, erases all RAM",0
+   0209   73 20 61 20   
+   020d   6c 69 73 74   
+   0211   20 6f 66 20   
+   0215   63 6f 6d 6d   
+   0219   61 6e 64 73   
+   021d   3a 20 0d 0a   
+   0221   20 52 55 4e   
+   0225   2c 20 72 75   
+   0229   6e 73 20 63   
+   022d   6f 64 65 20   
+   0231   66 72 6f 6d   
+   0235   20 72 61 6d   
+   0239   2e 0d 0a 20   
+   023d   4d 45 4d 44   
+   0241   55 4d 50 2c   
+   0245   20 64 75 6d   
+   0249   70 73 20 52   
+   024d   41 4d 73 20   
+   0251   63 6f 6e 74   
+   0255   65 6e 74 20   
+   0259   74 6f 20 74   
+   025d   65 72 6d 69   
+   0261   6e 61 6c 2e   
+   0265   0d 0a 20 44   
+   0269   45 4c 45 54   
+   026d   45 2c 20 65   
+   0271   72 61 73 65   
+   0275   73 20 61 6c   
+   0279   6c 20 52 41   
+   027d   4d 00         
+                        
+                        
+   027f                 DEL 
+                        
+   027f   44 45 4c 45       DB "DELETE",0
+   0283   54 45 00      
+                        
+   0286                 MEMDUMP
+                        
+   0286   4d 45 4d 44       DB "MEMDUMP",0
+   028a   55 4d 50 00   
+                        
+                        
+                         ;STRCOMPARATOR
+                          
+                          ;R8 1 string
+                          ;R9 2 string
+   028e                 STRCOMP
+   028e   f8 00             ldi 0  ;result = 0
+   0290   ac                plo R12
+   0291   f8 00             ldi 0
+   0293   bc                phi R12
+                        
+                            ;to compare strings duh
+                        
+   0294                 STRCOMPARATOR ;the while loop
+   0294   08                ldn R8 ;load value from memory[a_pointer] to D register
+   0295   e9                sex R9 ;set X pointer to b_pointer
+   0296   f3                xor ; memory[X] xor D
+                        
+   0297   32 9a             bz NEXT_IF ; you need to think in a way how the code flow, so we will jump when memory[a_pointer] == memory[b_pointer]
+                                        ; so when memory[a_pointer] != memory[b_pointer] the code continues
+   0299   df                sep R15 ;get back to main code
+                        
+   029a                 NEXT_IF
+   029a   08                ldn R8
+   029b   3a a1             bnz INCREMENTING
+   029d   f8 01             ldi $01
+   029f   ac                plo R12 ;if A = B then R12 = 1 else R12 = 0, R12 is one of the few free registers
+   02a0   df                sep R15
+                        
+   02a1                 INCREMENTING
+   02a1   18                inc R8
+   02a2   19                inc R9
+   02a3   30 94             br STRCOMPARATOR
+                        
+   02a5                     end
+019e  ASK_IN        00f0  ASK_INPUT     012d  BOOT_MSG      027f  DEL       
+007d  END_LINE      000f  FCALL         0019  FRETURN       0205  HELP      
+02a1  INCREMENTING    2710  LINE_IN       00a1  MAIN_PROGRAM    0286  MEMDUMP   
+01b1  NEW_LINE      029a  NEXT_IF       00df  NOTHING       005c  PRINT     
+0000  R0            0001  R1            000a  R10           000b  R11       
+000c  R12           000d  R13           000e  R14           000f  R15       
+0002  R2            0003  R3            0004  R4            0005  R5        
+0006  R6            0007  R7            0008  R8            0009  R9        
+006e  READLINE      01b4  READY         01a2  RESULT_OUT    01f1  RUN       
+01f5  RUNINFO       004b  SERIAL_NULL_BIT    003a  SERIAL_READ_START    0045  SERIAL_SAMPLE_BIT
+004f  SERIAL_SAVE_BIT    002a  SERIAL_SEND_BIT    0022  SERIAL_SEND_START    003e  SERIAL_WAIT_START
+3e80  STACK         0000  START         0091  STORE_CHAR    028e  STRCOMP   
+0294  STRCOMPARATOR    00b4  TEST          01bd  UNKNOWN       
+
