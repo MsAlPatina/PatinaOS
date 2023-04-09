@@ -567,7 +567,7 @@ PLAYERSHIP
 
 CREDITSTXT
 
-	db "Feito por Marta 🏳️‍⚧️ \r\n",0
+	db "Made by Patina 🏳️‍⚧️ \r\n",0
 	
 	
 	
