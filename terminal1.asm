@@ -330,6 +330,36 @@ CREDITS
 ;----------------------------------------------
 
 
+;LCDDRIVER--------------------------------------
+
+LCDDRIVER
+
+
+	ldi DRIVERINFO.0
+    plo R6
+    ldi DRIVERINFO.1
+    phi R6
+	
+    ldi PRINT.0 ;we use R6 to point what we want to print
+    plo R13
+    ldi PRINT.1
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+	
+	
+	
+    sep R15 ;end of code
+
+
+;---------------------------------------------
+
+
+
+
 
 ;YOUR PROG-------------------------------------
 YOUR_PROG
@@ -499,18 +529,10 @@ NOTIMPYET_MSG
     db "Not implemented yet.\r\n",0
 	
 ;commands
-
-RUN
-
-	DB "RUN",0
-	
-RUNINFO
-
-	DB "Its Show Time!!",0
 	
 HELP
 
-	DB "Heres a list of commands: \r\n RUN, runs code from ram.\r\n MEMDUMP, dumps RAMs content to terminal.\r\n DELETE, erases all RAM",0
+	DB "Heres a list of commands: \r\n OUTPUT, outputs a value to an port \r\n HELP, shows this \r\n RESET, erases RAM and sets all ports to 00\r\n",0
 	
 
 DEL 
@@ -522,16 +544,16 @@ MEMDUMP
 	DB "MEMDUMP",0
     
 OUTPUT_MSG1
-    db "select IO chip, WARNING:IO chip 1 can control ram and rom banks!!\r\n",0
+    db "select IO chip, WARNING:IO chip 1 can control ram and rom banks!!\r\n","HEX:00, port A (reference to BANK 0)\r\n","HEX:01, port B\r\n","HEX:02, port C\r\n","HEX:03, CONFIG REGISTER",0
 	
 OUTPUT_MSG2
     db "Port?\r\n",0
 	
 OUTPUT_MSG3
-    db "Value? (HEX)\r\n",0
+    db "Value? (HEX, values can be also an array of multiple HEX values terminated by two following HEX:00)\r\n",0
     
 COMMANDTABLE ;to test for a command
-	db "STR",0,"ADD",0,"SUB",0,"LDN",0,"OUTPUT",0,"INPUT",0,"SLEEP",0,"WAIT",0,"PAUSE",0,"IF",0,"PRINT",0,"CLEAR",0,"CLEAR SCREEN",0,"DRAW",0,"DEMO",0,"CREDITS",0,0
+	db "STR",0,"ADD",0,"SUB",0,"LDN",0,"OUTPUT",0,"INPUT",0,"SLEEP",0,"WAIT",0,"PAUSE",0,"IF",0,"PRINT",0,"CLEAR",0,"CLEAR SCREEN",0,"DRAW",0,"DEMO",0,"CREDITS",0,"LCDDRIVER",0,0
 	
 COMMANDFUNCTIONS
     db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;STR
@@ -550,7 +572,7 @@ COMMANDFUNCTIONS
     db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;DRAW
 	db DEMOGAME.0, DEMOGAME.1 ;DEMO GAME
 	db CREDITS.0, CREDITS.1 ;CREDITS
-
+	db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;LCDDRIVER
 
 
 DEMOGAMEBASELEVEL
@@ -567,9 +589,13 @@ PLAYERSHIP
 
 CREDITSTXT
 
-	db "Feito por Marta 🏳️‍⚧️ \r\n",0
+	db "Made by Patina 🏳️‍⚧️ \r\n",0
 	
 	
+	
+DRIVERINFO
+
+	DB "Usage, 4-bit mode, E on P7, RS on P6, R/W on P5, P4 float, P0 to P3 to D0 to D3 respectivly\r\n",0
 	
 	
 ;-RAM------------------------------------------
