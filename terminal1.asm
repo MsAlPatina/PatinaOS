@@ -16,6 +16,11 @@ R13 EQU 13
 R14 EQU 14
 R15 EQU 15
 
+;;TODO:: Implement BANKING
+; make a memory limiter to avoid accidental overwrite when loading to ram
+
+
+
 STACK_POS EQU 33023
 INPUT_BUFF EQU 32768
 
@@ -589,13 +594,13 @@ PLAYERSHIP
 
 CREDITSTXT
 
-	db "Made by Patina 🏳️‍⚧️ \r\n",0
+	db "Feito por Marta 🏳️‍⚧️ \r\n",0
 	
 	
 	
 DRIVERINFO
 
-	DB "Usage, 4-bit mode, E on P7, RS on P6, R/W on P5, P4 float, P0 to P3 to D0 to D3 respectivly\r\n",0
+	DB "Usage, 4-bit mode, E on P7, RS on P6, R/W on P5, P4 float, P0 to P3 to D0 to D3 respectivly, type your string!! end it with HEX:00\r\n",0
 	
 	
 ;-RAM------------------------------------------
