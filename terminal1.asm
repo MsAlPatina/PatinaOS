@@ -16,63 +16,41 @@ R13 EQU 13
 R14 EQU 14
 R15 EQU 15
 
-STACK EQU 16000 ;The starting address of the STACK.
-LINE_IN EQU 10000 ;The starting address of the readed characters.
-
+STACK_POS EQU 33023
+INPUT_BUFF EQU 32768
 
     org 00h
 
 START
     dis
     idl
-
+    
     seq
-
-    ldi STACK.0 ;R14 STACK pointer
+    
+    ldi STACK_POS.0 ;R14 STACK pointer
     plo R14
-    ldi STACK.1
+    ldi STACK_POS.1
     phi R14
-
-    ldi FCALL.1 ;Setting the HIGH part of R15. This will never change again.
-    phi R15 ;read more about it in the "FUNCTION CALL HELPER" section.
-
+    
+    ldi FCALL.1
+    phi R15
+    
     lbr MAIN_PROGRAM
-
+    
 ;-FUNCTION CALL HELPER-------------------------
-;This subroutine helps to call "infinite" amount of functions,
-;and let us use the R0 register as a permanent program counter.
-;The only case when the program counter is need to be changed is
-;when this subroutine is called.
-;This subroutine uses the R15 register as a program counter.
-;It saves the R0 register's value into the STACK
-;Then copies the value of the R13 register to the R0 register.
-;The STACK address is stored in R14, and it should not be changed,
-;only then if you really know what are you doing.
-;To call a function first set the R13 to the target function's address
-;Then use the following lines to initiate the call:
-;ldi FCALL.0
-;plo R15
-;sep R15
-;
-;Since this subroutine is stored in the first 256 bytes of the ROM,
-;only the LOW part of the R15 needs to be set before using it as
-;program counter.
-;
-;To return from a function, use simply the "sep R15" instruction.
-
 FCALL
     sex R14
     glo R0
     stxd
     ghi R0
     stxd
-
+    
     glo R13
     plo R0
     ghi R13
     phi R0
     sep R0
-
+    
 FRETURN
     inc R14
     sex R14
@@ -100,7 +78,7 @@ SERIAL_SEND_BIT
     lskp   ;24
     seq  ;16
     nop  ;24
-
+    
     dec R4  ;16
     glo R4  ;16
     lsnz    ;24
@@ -119,7 +97,7 @@ SERIAL_READ_START
     ldi 00h
     plo R5
     phi R5
-
+    
 SERIAL_WAIT_START
     bn1 SERIAL_WAIT_START ;16
     nop ;24
@@ -158,20 +136,20 @@ PRINT
     lsnz
     sep R15
     nop
-
+    
     phi R4
-
+    
     ldi SERIAL_SEND_START.0
     plo R13
     ldi SERIAL_SEND_START.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
     br PRINT
 ;----------------------------------------------
-
+    
 ;-READ LINE------------------------------------
 ;-WHERE TO READ-R7-----------------------------
 READLINE
@@ -179,260 +157,426 @@ READLINE
     plo R13
     ldi SERIAL_READ_START.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+    
     ghi R5
     xri 13
     bnz STORE_CHAR
-
+    
 END_LINE
     ldi 00h
     str R7
-
+    
     ldi NEW_LINE.0
     plo R6
     ldi NEW_LINE.1
     phi R6
-
+    
     ldi PRINT.0
     plo R13
     ldi PRINT.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+    
     sep R15
-
+    
 STORE_CHAR
     ghi R5
     str R7
     inc R7
-
+    
     phi R4
-
+    
     ldi SERIAL_SEND_START.0
     plo R13
     ldi SERIAL_SEND_START.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
     br READLINE
 ;----------------------------------------------
 
-;-MAIN-----------------------------------------
-;The program starts with the printing of the boot message.
-MAIN_PROGRAM
-    ldi BOOT_MSG.0 ;The PRINT function uses the R6 register for the address of the string.
-    plo R6 ;so we load the BOOT_MSG address in to the R6 register first.
-    ldi BOOT_MSG.1
-    phi R6
+;-STR COMPARATOR-------------------------------
+;-R8 stringA-R9 stringB------------------------
+;-RETURN R12.0---------------------------------
+STRCOMP
+    ldi 0  ;result = 0
+    plo R12
+    ldi 0
+    phi R12
+	
+STRCOMPARATOR ;the while loop
+    ldn R8 ;load value from memory[a_pointer] to D register
+    sex R9 ;set X pointer to b_pointer
+    xor ; memory[X] xor D
+    
+    bz NEXT_IF ; you need to think in a way how the code flow, so we will jump when memory[a_pointer] == memory[b_pointer]
+                ; so when memory[a_pointer] != memory[b_pointer] the code continues
+    sep R15 ;get back to main code
+    
+NEXT_IF 
+	ldn R8
+	bnz INCREMENTING
+	ldi 1
+	plo R12 ;if A = B then R12 = 1 else R12 = 0, R12 is one of the few free registers
+	sep R15
+	
+INCREMENTING
+	inc R8
+	inc R9
+	br STRCOMPARATOR
+;----------------------------------------------
 
-    ldi PRINT.0 ;Setting R13 to the address of PRINT.
-    plo R13 ;to call the PRINT function.
-    ldi PRINT.1
-    phi R13
-
-    ldi FCALL.0
-    plo R15
-    sep R15 ;Calling the function right here.
-
-    lbr ASK_INPUT
-
-TEST
-    ldi LINE_IN.0
-    plo R8 
-    ldi LINE_IN.1
-    phi R8
-
-    ldi RUN.0
-    plo R9 
-    ldi RUN.1
-    phi R9
-
-    ldi STRCOMP.0
-    plo R13 ;to call STRCOMP, R3 is also the last free register
-    ldi STRCOMP.1
-    phi R13
-
-    ldi FCALL.0
-    plo R15
-    sep R15
-
-    glo R12
-
-    lbz NOTHING
-
-    ldi RUNINFO.0
+;-NOTIMPLEMENTEDYET----------------------------
+NOTIMPLEMENTEDYET
+    ldi NOTIMPYET_MSG.0
     plo R6
-    ldi RUNINFO.1
+    ldi NOTIMPYET_MSG.1
     phi R6
-
+	
     ldi PRINT.0 ;we use R6 to point what we want to print
     plo R13
     ldi PRINT.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+    
     sep R15
+;----------------------------------------------
 
-NOTHING
-    ldi UNKNOWN.0
+;-OUPUT_FUNC-----------------------------------
+OUTPUT_FUNC
+    ldi OUTPUT_MSG1.0
+    plo R6
+    ldi OUTPUT_MSG1.1
+    phi R6
+	
+    ldi PRINT.0 ;we use R6 to point what we want to print
+    plo R13
+    ldi PRINT.1
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+    sep R15
+;----------------------------------------------
+
+;DEMO GAME ------------------------------------
+
+DEMOGAME  ;we use 👾👾 for the alians
+
+
+    ldi DEMOGAMEBASELEVEL.0
+    plo R6
+    ldi DEMOGAMEBASELEVEL.1
+    phi R6
+	
+    ldi PRINT.0 ;we use R6 to point what we want to print
+    plo R13
+    ldi PRINT.1
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+	
+	
+	
+    sep R15 ;end of code
+
+
+
+;----------------------------------------------
+
+
+
+
+
+;CREDITS---------------------------------------
+CREDITS
+
+	ldi CREDITSTXT.0
+    plo R6
+    ldi CREDITSTXT.1
+    phi R6
+	
+    ldi PRINT.0 ;we use R6 to point what we want to print
+    plo R13
+    ldi PRINT.1
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+	
+	
+	
+    sep R15 ;end of code
+
+;----------------------------------------------
+
+
+
+;YOUR PROG-------------------------------------
+YOUR_PROG
+    ldi COMMANDFUNCTIONS.0 ;load the address of the first function address to the R4
+    plo R4
+    ldi COMMANDFUNCTIONS.1
+    phi R4
+    
+    ldi COMMANDTABLE.0 ;load the commantable in R9
+    plo R9
+    ldi COMMANDTABLE.1
+    phi R9
+    
+CONTINUE_COMPARISON
+    ldi INPUT_BUFF.0 ;load the Input buffer in R8
+    plo R8
+    ldi INPUT_BUFF.1
+    phi R8
+    
+    ldi STRCOMP.0 ;start comparing the two strings
+    plo R13
+    ldi STRCOMP.1
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+    glo R12 ;load the lower of R12 into D register
+    lbz NOMATCH
+    ldn R4
+    plo R13
+    inc R4
+    ldn R4
+    phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+    sep R15
+    
+NOMATCH
+    inc R4 ;increment R4 twice.
+    inc R4
+    
+GO_TO_END
+    ldn R9 ;load the last char from the command table.
+    bz GET_NEXT_COMMAND ;if R9 pointing to 0 then go to the next command.
+    inc R9 ;else increment R9 by one and check again.
+    br GO_TO_END
+    
+GET_NEXT_COMMAND
+    inc R9 ; R9 is pointing to the 0, so we increment it by one to point to the next command's firs character.
+    ldn R9 ;get the next command's first character. The end of the command table will terminated by two 0s.
+    lbnz CONTINUE_COMPARISON ;if it's not zero then do a comparison with input buffer again.
+    
+    ldi UNKNOWN.0 ;UNKNOWN command meassage.
     plo R6
     ldi UNKNOWN.1
     phi R6
-
+	
     ldi PRINT.0 ;we use R6 to point what we want to print
     plo R13
     ldi PRINT.1
     phi R13
+    
+    ldi FCALL.0
+    plo R15
+    sep R15
+    
+    sep R15 ;else return and ask for another input.
+;----------------------------------------------
 
+;-MAIN-----------------------------------------
+MAIN_PROGRAM
+    ldi BOOT_MSG.0
+    plo R6
+    ldi BOOT_MSG.1
+    phi R6
+	
+    ldi PRINT.0 ;we use R6 to point what we want to print
+    plo R13
+    ldi PRINT.1
+    phi R13
+    
     ldi FCALL.0
     plo R15
     sep R15
 
-    sep R15
-
 ASK_INPUT ;use SCALL for this 
-    ldi LINE_IN.0
+    ldi INPUT_BUFF.0
     plo R7
-    ldi LINE_IN.1
+    ldi INPUT_BUFF.1
     phi R7
-
+    
     ldi READLINE.0
     plo R13
     ldi READLINE.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
-    ldi TEST.0
+    
+    ;Program goes here:
+    
+    ldi YOUR_PROG.0
     plo R13
-    ldi TEST.1
+    ldi YOUR_PROG.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+    
+    ;Program ends here
+    
     ldi NEW_LINE.0
     plo R6
     ldi NEW_LINE.1
     phi R6
-
+    
     ldi PRINT.0
     plo R13
     ldi PRINT.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+    
     ldi ASK_IN.0
     plo R6
     ldi ASK_IN.1
     phi R6
-
+    
     ldi PRINT.0
     plo R13
     ldi PRINT.1
     phi R13
-
+    
     ldi FCALL.0
     plo R15
     sep R15
-
+	
     lbr ASK_INPUT ;replace by SRET
-
-;this is looped, we can make this a function tho
+	
+;this is looped, we can make this a function tho	
 ;----------------------------------------------
 
 ;-CONSTANT DATA--------------------------------
 BOOT_MSG
-    db "CDP1806 Terminal, please use either BASIC or ASM op codes. \r\n For help use HELP command.\r\n 220 Bytes of RAM free "
+    db "CDP1806 Terminal, please use either BASIC or ASM op codes. \r\n For help use HELP command.\r\n 128KBytes of RAM free ",0
 ASK_IN
     db "\r\n>",0
 RESULT_OUT
     db "You typed in: ",0
 NEW_LINE
     db "\r\n",0
-
+	
 READY
-
-    db "READY \r\n",0
-
+	db "READY \r\n",0	
 UNKNOWN
-
     db "Command doesnt exist. For help use HELP command. \r\n",0
-
+NOTIMPYET_MSG
+    db "Not implemented yet.\r\n",0
+	
 ;commands
 
 RUN
 
-    DB "RUN",0
-
+	DB "RUN",0
+	
 RUNINFO
 
-    DB "Its Show Time!!",0
-
+	DB "Its Show Time!!",0
+	
 HELP
 
-    DB "Heres a list of commands: \r\n RUN, runs code from ram.\r\n MEMDUMP, dumps RAMs content to terminal.\r\n DELETE, erases all RAM",0
-
+	DB "Heres a list of commands: \r\n RUN, runs code from ram.\r\n MEMDUMP, dumps RAMs content to terminal.\r\n DELETE, erases all RAM",0
+	
 
 DEL 
 
-    DB "DELETE",0
-
+	DB "DELETE",0
+	
 MEMDUMP
 
-    DB "MEMDUMP",0
+	DB "MEMDUMP",0
+    
+OUTPUT_MSG1
+    db "select IO chip, WARNING:IO chip 1 can control ram and rom banks!!\r\n",0
+	
+OUTPUT_MSG2
+    db "Port?\r\n",0
+	
+OUTPUT_MSG3
+    db "Value? (HEX)\r\n",0
+    
+COMMANDTABLE ;to test for a command
+	db "STR",0,"ADD",0,"SUB",0,"LDN",0,"OUTPUT",0,"INPUT",0,"SLEEP",0,"WAIT",0,"PAUSE",0,"IF",0,"PRINT",0,"CLEAR",0,"CLEAR SCREEN",0,"DRAW",0,"DEMO",0,"CREDITS",0,0
+	
+COMMANDFUNCTIONS
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;STR
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;ADD
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;SUB
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;LDN
+    db OUTPUT_FUNC.0, OUTPUT_FUNC.1 ;OUTPUT
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;INPUT
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;SLEEP
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;WAIT
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;PAUSE
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;IF
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;PRINT
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;CLEAR
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;CLEAR SCREEN
+    db NOTIMPLEMENTEDYET.0, NOTIMPLEMENTEDYET.1 ;DRAW
+	db DEMOGAME.0, DEMOGAME.1 ;DEMO GAME
+	db CREDITS.0, CREDITS.1 ;CREDITS
 
 
- ;STRCOMPARATOR
-  
-  ;R8 1 string
-  ;R9 2 string
-STRCOMP
-    ldi 0  ;result = 0
-    plo R12
-    ldi 0
-    phi R12
 
-    ;to compare strings duh
+DEMOGAMEBASELEVEL
 
-STRCOMPARATOR ;the while loop
-    ldn R8 ;load value from memory[a_pointer] to D register
-    sex R9 ;set X pointer to b_pointer
-    xor ; memory[X] xor D
+		DB "👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾 \r\n","👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾 \r\n","👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾 \r\n","👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾👾 \r\n",0
 
-    bz NEXT_IF ; you need to think in a way how the code flow, so we will jump when memory[a_pointer] == memory[b_pointer]
-                ; so when memory[a_pointer] != memory[b_pointer] the code continues
-    sep R15 ;get back to main code
+SPACEBETWEEN
 
-NEXT_IF
-    ldn R8
-    bnz INCREMENTING
-    ldi $01
-    plo R12 ;if A = B then R12 = 1 else R12 = 0, R12 is one of the few free registers
-    sep R15
+	db "\r\n",0
 
-INCREMENTING
-    inc R8
-    inc R9
-    br STRCOMPARATOR
+PLAYERSHIP
 
+	db "▲ \r\n",0
+
+CREDITSTXT
+
+	db "Feito por Marta 🏳️‍⚧️ \r\n",0
+	
+	
+	
+	
+;-RAM------------------------------------------
+LINE_IN
+    db 0
+    org $+61
+STACK
+;----------------------------------------------
     end
     
