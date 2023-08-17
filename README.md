@@ -1,3 +1,5 @@
+## Depreciated, most of the code has been moved to C, we will update this repo once a stable code is made
+
 # PatinaOS
 An ASM library with codes for multiple tasks for the CDP1802 and CDP1806
 
